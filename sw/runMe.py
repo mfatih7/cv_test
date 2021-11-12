@@ -1,29 +1,32 @@
 import numpy as np
 import os
-import cv2
+import cv2 as cv
 
 CX = 960
 CY = 540
 INTRINSIC_GUESS = 100
+N_IMAGES = 3
+
+imageSize = (CX*2, CY*2)
 
 parentDir=os.path.split(os.getcwd())[0]
 inputDir=os.path.join(parentDir, 'inputs')
 outputDir=os.path.join(parentDir, 'outputs')
 
-objpoints = np.load(inputDir + '\\' + 'vr3d.npy')
-imgpoints = np.load(inputDir + '\\' + 'vr2d.npy')
+objectPoints = np.load(inputDir + '\\' + 'vr3d.npy')
+imagePoints = np.load(inputDir + '\\' + 'vr2d.npy')
 
 
-flags = cv2.CALIB_USE_INTRINSIC_GUESS + \
-        cv2.CALIB_FIX_PRINCIPAL_POINT + \
-        cv2.CALIB_FIX_ASPECT_RATIO + \
-        cv2.CALIB_ZERO_TANGENT_DIST + \
-        cv2.CALIB_FIX_K1 + \
-        cv2.CALIB_FIX_K2 + \
-        cv2.CALIB_FIX_K3 + \
-        cv2.CALIB_FIX_K4 + \
-        cv2.CALIB_FIX_K5 + \
-        cv2.CALIB_FIX_K6 
+flags = cv.CALIB_USE_INTRINSIC_GUESS + \
+        cv.CALIB_FIX_PRINCIPAL_POINT + \
+        cv.CALIB_FIX_ASPECT_RATIO + \
+        cv.CALIB_ZERO_TANGENT_DIST + \
+        cv.CALIB_FIX_K1 + \
+        cv.CALIB_FIX_K2 + \
+        cv.CALIB_FIX_K3 + \
+        cv.CALIB_FIX_K4 + \
+        cv.CALIB_FIX_K5 + \
+        cv.CALIB_FIX_K6 
         
 initialCameraMatrix = np.zeros((3,3),'float32')
 initialCameraMatrix[0,0] = INTRINSIC_GUESS
@@ -33,28 +36,25 @@ initialCameraMatrix[0,2] = CX
 initialCameraMatrix[1,2] = CY    
 
 # Since calibration points are not planar initial intrinsic Matrix needed
-# ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera([objpoints], [imgpoints], (CX*2, CY*2), None, None)
+# ret, mtx, dist, rvecs, tvecs = cv.calibrateCamera([objectPoints], [imagePoints], imageSize , None, None)
 
-ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera([objpoints], [imgpoints], (CX*2, CY*2), initialCameraMatrix, None, flags=flags)
-
-
+ret, mtx, dist, rvecs, tvecs = cv.calibrateCamera([objectPoints], [imagePoints], imageSize, initialCameraMatrix, None, flags=flags)
 
 
-
-# C = np.tile(np.array([CX, CY]), (np.size(A,0),1))
-
-# A = np.subtract(A,C)
+sift = cv.SIFT_create()
+kpList = []
 
 
-# img1 = cv2.imread(inputDir + '\\' + 'img1.png')
-# dimensions1 = img1.shape
-
-# img2 = cv2.imread(inputDir + '\\' + 'img1.png')
-# dimensions2 = img2.shape
-
-# img3 = cv2.imread(inputDir + '\\' + 'img1.png')
-# dimensions3 = img3.shape
-
-# dimensions1[0]
-
-# # A1 = np.subtract(A, np.repeat())
+for i in range(N_IMAGES) :
+    imNo = i+1
+    
+    img = cv.imread(inputDir + '\\' + 'img' + str(imNo) + '.png')
+    gray= cv.cvtColor(img,cv.COLOR_BGR2GRAY)
+    
+    kp = sift.detect(gray,None)    
+    # img=cv.drawKeypoints(gray,kp,img)
+    img=cv.drawKeypoints(gray,kp,img,flags=cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+    cv.imwrite(outputDir + '\\' + 'sift_keypoints' + str(imNo) + '.png', img)
+    
+    kpList.append(kp)
+    
