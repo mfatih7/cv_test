@@ -3,20 +3,31 @@ import os
 import cv2 as cv
 from matplotlib import pyplot as plt
 
-CX = 960
-CY = 540
-INTRINSIC_GUESS = 100
-N_IMAGES = 3
+from plotFunctions import plotFunctions as PF
 
-imageSize = (CX*2, CY*2)
 
 parentDir=os.path.split(os.getcwd())[0]
 inputDir=os.path.join(parentDir, 'inputs')
 outputDir=os.path.join(parentDir, 'outputs')
 
+if(os.path.exists(outputDir)==0):
+    os.mkdir(outputDir)
+
+SX = 1920
+SY = 1080
+
+CX = SX/2
+CY = SY/2
+INITIAL_FOCAL_LENGTH_GUESS = 100
+N_IMAGES = 3
+
+
+# %% STEP 1 Finding Intrinsic Parameters Using Camera calibration Procedure with konwn 2D-3D correspondences
+
 objectPoints = np.load(inputDir + '\\' + 'vr3d.npy')
 imagePoints = np.load(inputDir + '\\' + 'vr2d.npy')
 
+imageSize = (SX, SY)
 
 flags = cv.CALIB_USE_INTRINSIC_GUESS + \
         cv.CALIB_FIX_PRINCIPAL_POINT + \
@@ -30,8 +41,8 @@ flags = cv.CALIB_USE_INTRINSIC_GUESS + \
         cv.CALIB_FIX_K6 
         
 initialCameraMatrix = np.zeros((3,3),'float32')
-initialCameraMatrix[0,0] = INTRINSIC_GUESS
-initialCameraMatrix[1,1] = INTRINSIC_GUESS
+initialCameraMatrix[0,0] = INITIAL_FOCAL_LENGTH_GUESS
+initialCameraMatrix[1,1] = INITIAL_FOCAL_LENGTH_GUESS
 initialCameraMatrix[2,2] = 1
 initialCameraMatrix[0,2] = CX
 initialCameraMatrix[1,2] = CY    
@@ -41,11 +52,14 @@ initialCameraMatrix[1,2] = CY
 
 ret, cameraMatrix, dist, rvecs, tvecs = cv.calibrateCamera([objectPoints], [imagePoints], imageSize, initialCameraMatrix, None, flags=flags)
 
+
+# %% STEP 2 Finding SIFT Features In Images
+
+sift                    = cv.SIFT_create()
 imgList                 = []
 imgWithKeypointsList    = []
 kpList                  = []
 desList                 = []
-sift                    = cv.SIFT_create()
 
 for i in range(N_IMAGES) :
     imNo = i+1
@@ -53,49 +67,57 @@ for i in range(N_IMAGES) :
     
     img = cv.imread(inputDir + '\\' + 'img' + str(imNo) + '.png')
     imgList.append(img)
-
-    plt.imshow(imgList[i]),plt.show()
     
     gray= cv.cvtColor(img,cv.COLOR_BGR2GRAY)    
-    kp, des = sift.detectAndCompute(gray,None)
-    
+    kp, des = sift.detectAndCompute(gray,None)    
     
     imgWithKeypoints = cv.drawKeypoints(img,\
                                         kp, \
                                         outImage=np.array([]),\
-                                        flags=cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-    cv.imwrite(outputDir + '\\' + 'sift_keypoints' + str(imNo) + '.png', imgWithKeypoints)
+                                        flags=cv.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)    
     
     kpList.append(kp)
     desList.append(des)
     imgWithKeypointsList.append(imgWithKeypoints)
+    
+    print('Number of SIFT features found in image ' + str(imNo) + ' is ' + str(len(desList[i])) )     
 
-    plt.imshow(imgWithKeypointsList[i]),plt.show()    
+    cv.imwrite(outputDir + '\\' + 'SIFTkeypoints' + str(imNo) + '.png', imgWithKeypoints)  
 
-
-
-
+# %% STEP 3 Applying Closeness Constraint to SIFT Features
 
 bf = cv.BFMatcher()
+src_ptsList = []
+dst_ptsList = []
 
 for i in range(N_IMAGES-1) :
-    print(i+1)
     
     matches = bf.knnMatch(desList[0], desList[i+1], k=2)
     
-    print(len(desList[0]))        
-    print(len(desList[i+1])) 
+    print('Number of matches between image 1 and image ' + str(i+2) + ' is ' + str(len(matches)) )
     
     good = []
     for m,n in matches:
         if m.distance < 0.75*n.distance:            
-            good.append(m)
-            
+            good.append(m)    
+    
     src_pts = np.float32([ kpList[0][m.queryIdx].pt for m in good ])
     dst_pts = np.float32([ kpList[i+1][m.trainIdx].pt for m in good ])
     
-    print(len(src_pts))        
-    print(len(dst_pts))    
+    print('Number of matches after closeness elimination is ' + str(len(src_pts)) )  
+    
+    src_ptsList.append(src_pts)
+    dst_ptsList.append(dst_pts)
+
+# %% STEP 4 Finding Essential Matrices (E)
+
+Elist = []
+maskList = []
+
+for i in range(N_IMAGES-1) :
+    
+    src_pts = src_ptsList[i]
+    dst_pts = dst_ptsList[i]
     
     E, mask = cv.findEssentialMat(src_pts,\
                                   dst_pts,\
@@ -103,40 +125,68 @@ for i in range(N_IMAGES-1) :
                                   method=cv.RANSAC,\
                                   threshold=1,\
                                   maxIters=1000    )
-    print(len(mask))
+
+    Elist.append(E)
+    maskList.append(mask)
+
+# %% STEP 5 Checking Correspondences on Images
+
+for i in range(N_IMAGES-1) :
     
-    A = np.hstack( (imgList[0], imgList[i+1]) )
+    stackedImage = np.hstack( (imgList[0], imgList[i+1]) )
     
-    src_ptsD_draw =np.int16(src_pts)
-    dst_ptsD_draw =np.int16(dst_pts)
+    src_ptsD_draw =np.int16(src_ptsList[i])
+    dst_ptsD_draw =np.int16(dst_ptsList[i])
+    maskDraw = maskList[i]
     
     matchCounter = 0
-    for j in range(len(mask)):        
-    # for j in range(1):  
-        if(mask[j,0]==1):
+    for j in range(len(mask)): 
+        if(maskDraw[j,0]==1):
             matchCounter = matchCounter +1
-            if(matchCounter%100==0):
+            if(matchCounter%50==0):
                 color1 = (list(np.random.choice(range(256), size=3)))  
                 color =[int(color1[0]), int(color1[1]), int(color1[2])] 
-                # cv.line(A, (20,10), (100,10), (255,0,0), 1)
-                cv.line(A, (src_ptsD_draw[j,0], src_ptsD_draw[j,1]), (CX*2+dst_ptsD_draw[j,0], dst_ptsD_draw[j,1]), color, 1)
+                cv.line(stackedImage, (src_ptsD_draw[j,0], src_ptsD_draw[j,1]), (SX+dst_ptsD_draw[j,0], dst_ptsD_draw[j,1]), color, 2)
 
+    cv.imwrite(outputDir + '\\' + 'CorrespondenceCheckOnImage' + str(1) + 'andImage' + str(i+2) + '.png', stackedImage)
+
+# %% STEP 6 Decomposing Essential Matrix (E) into Rotation Matrix (R) and Translation Vector (t)
+
+R1List = []
+R2List = []
+tList = []
+
+for i in range(N_IMAGES-1) :
     
-    plt.imshow(A),plt.show()
-    cv.imwrite(outputDir + '\\' + 'A' + str(i) + '.png', A)    
-        
-    # for j in range(len(mask)):
-        
-    # img2 = cv.drawMatches(imgList[0], src_pts, imgList[i+1], dst_pts, mask, imgList[0] )   
-    # cv.imwrite(outputDir + '\\' + 'asd' + img2 + '.png', img)
+    E = Elist[i]
         
     R1, R2, t = cv.decomposeEssentialMat(E)
-        
-    dst1, jacobian1 = cv.Rodrigues(R1)
-    dst2, jacobian2 = cv.Rodrigues(R2)
     
-    # M, mask = cv.findHomography(src_pts, dst_pts, cv2.RANSAC,5.0)
-    # matchesMask = mask.ravel().tolist()        
-            
-            
+    R1List.append(R1)
+    R2List.append(R2)
+    tList.append(t)
+    
+    print('When R1 and R2 matrices are compared with the images R1 matrix is selected for image 1 and image ' + str(i+2) + ' pair')  
+
+
+# %% STEP 6 
+
+dstList = []
+
+for i in range(N_IMAGES-1) :
+    
+    R = R1List[i]    
+    dst, _ = cv.Rodrigues(R)    
+    dstList.append(dst)
+    
+   
+    
+        
+PF.plotCameraPosition()
+PF.plotCorrespondences()            
+
+
+
+
+
             
