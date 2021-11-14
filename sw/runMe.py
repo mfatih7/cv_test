@@ -20,7 +20,7 @@ CX = SX/2
 CY = SY/2
 INITIAL_FOCAL_LENGTH_GUESS = 100
 N_IMAGES = 3
-TRANSLATION_SCALE = 1000
+TRANSLATION_SCALE = 10000
 
 
 # %% STEP 1 Finding Intrinsic Parameters Using Camera calibration Procedure with konwn 2D-3D correspondences
@@ -181,37 +181,15 @@ for i in range(N_IMAGES-1) :
 
 # %% STEP 7 PLOTTING OUTPUT FIGURES
 
+tMatrix = np.zeros((3,3))
 for i in range(N_IMAGES-1) :
+    # Since direction of t is from image 2 and image 3 to image 1
+    # t must be multiplied with scalar -1 to reverse the direction of the vector
+    tMatrix[:,i+1]=np.multiply(np.squeeze(tList[i]), -1) 
 
-    t = tList[i]    
-
-    PF.plotCameraTrajectory(outputDir, -t*TRANSLATION_SCALE, i+2, TRANSLATION_SCALE)
+PF.plotCameraTrajectory(outputDir, tMatrix, TRANSLATION_SCALE)
+   
     
-
-
-
-# dstList = []
-
-# for i in range(N_IMAGES-1) :
-    
-#     E = Elist[i]
-#     src_pts = src_ptsList[i]
-#     dst_pts = dst_ptsList[i]
-#     mask = maskList[i]
-    
-#     O1, O2, O3, O4 = cv.recoverPose(E, src_pts, dst_pts, cameraMatrix, mask)
-
-#     # cv.recover
-        
-        
-#     # R = R1List[i]    
-#     # dst, _ = cv.Rodrigues(R)    
-#     # dstList.append(dst)
-        
-        
-# PF.plotCameraPosition()
-# PF.plotCorrespondences()            
-
 
 
 
