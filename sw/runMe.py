@@ -20,6 +20,7 @@ CX = SX/2
 CY = SY/2
 INITIAL_FOCAL_LENGTH_GUESS = 100
 N_IMAGES = 3
+TRANSLATION_SCALE = 1000
 
 
 # %% STEP 1 Finding Intrinsic Parameters Using Camera calibration Procedure with konwn 2D-3D correspondences
@@ -152,38 +153,64 @@ for i in range(N_IMAGES-1) :
 
 # %% STEP 6 Decomposing Essential Matrix (E) into Rotation Matrix (R) and Translation Vector (t)
 
-R1List = []
-R2List = []
+Rlist = []
 tList = []
 
 for i in range(N_IMAGES-1) :
     
-    E = Elist[i]
-        
-    R1, R2, t = cv.decomposeEssentialMat(E)
+    correctCheckCount = []
+    R = []
+    t = []
     
-    R1List.append(R1)
-    R2List.append(R2)
+    E = Elist[i]
+    src_pts = src_ptsList[i]
+    dst_pts = dst_ptsList[i]
+    mask = maskList[i]
+    
+#   Not using decomposeEssentialMat() since it gives 2 results for rotation     
+    # R1, R2, t = cv.decomposeEssentialMat(E)
+
+#   Using recoverPose() since it also makes control for 2 rotation matrices 
+    correctCheckCount, R, t, _ = cv.recoverPose(E, src_pts, dst_pts, cameraMatrix, mask)
+    
+    Rlist.append(R)
     tList.append(t)
     
-    print('When R1 and R2 matrices are compared with the images R1 matrix is selected for image 1 and image ' + str(i+2) + ' pair')  
+    print(str(int(100*correctCheckCount/len(mask))) + ' % of the matches remain correct after cheirality check in recoverPose() for image 1 - image ' + str(i+2) + ' pair')  
 
 
-# %% STEP 6 
-
-dstList = []
+# %% STEP 7 PLOTTING OUTPUT FIGURES
 
 for i in range(N_IMAGES-1) :
+
+    t = tList[i]    
+
+    PF.plotCameraTrajectory(outputDir, -t*TRANSLATION_SCALE, i+2, TRANSLATION_SCALE)
     
-    R = R1List[i]    
-    dst, _ = cv.Rodrigues(R)    
-    dstList.append(dst)
+
+
+
+# dstList = []
+
+# for i in range(N_IMAGES-1) :
     
-   
+#     E = Elist[i]
+#     src_pts = src_ptsList[i]
+#     dst_pts = dst_ptsList[i]
+#     mask = maskList[i]
     
+#     O1, O2, O3, O4 = cv.recoverPose(E, src_pts, dst_pts, cameraMatrix, mask)
+
+#     # cv.recover
         
-PF.plotCameraPosition()
-PF.plotCorrespondences()            
+        
+#     # R = R1List[i]    
+#     # dst, _ = cv.Rodrigues(R)    
+#     # dstList.append(dst)
+        
+        
+# PF.plotCameraPosition()
+# PF.plotCorrespondences()            
 
 
 
