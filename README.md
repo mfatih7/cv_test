@@ -1,9 +1,13 @@
 # UNCALIBRATED STEREO PROBLEM
 
-## Getting Intrinsic Parameters of Camera From Known 3D-2D Correspondences
+## STEP 1 Finding Intrinsic Parameters Using Camera calibration Procedure with konwn 2D-3D correspondences
 
-## Obtaining SIFT Features
+## STEP 2 Finding SIFT Features In Images
 
-## Obtaining Essential Matrix (E)
+## STEP 3 Applying Closeness Constraint to SIFT Features
 
-## Obtaining Rotation and Translation Matrices (R, t)
+## STEP 4 Finding Essential Matrices (E)
+
+## STEP 5 Checking Correspondences on Images
+
+## STEP 6 Decomposing Essential Matrix (E) into Rotation Matrix (R) and Translation Vector (t)
