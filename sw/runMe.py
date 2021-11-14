@@ -22,7 +22,6 @@ INITIAL_FOCAL_LENGTH_GUESS = 100
 N_IMAGES = 3
 TRANSLATION_SCALE = 10000
 
-
 # %% STEP 1 Finding Intrinsic Parameters Using Camera calibration Procedure with konwn 2D-3D correspondences
 
 objectPoints = np.load(inputDir + '\\' + 'vr3d.npy')
@@ -188,10 +187,5 @@ for i in range(N_IMAGES-1) :
     tMatrix[:,i+1]=np.multiply(np.squeeze(tList[i]), -1) 
 
 PF.plotCameraTrajectory(outputDir, tMatrix, TRANSLATION_SCALE)
-   
-    
-
-
-
-
-            
+PF.plotCameraRotation(outputDir, SX, SY, Rlist, tMatrix, TRANSLATION_SCALE)
+         
