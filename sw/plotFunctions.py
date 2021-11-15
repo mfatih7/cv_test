@@ -28,7 +28,9 @@ class plotFunctions:
         
         ax.set_xlim(xMin-xDiff/10, xMax+xDiff/10 )
         ax.set_ylim(zMin-zDiff/10, zMax+zDiff/10 )
-        ax.set_zlim(yMin-yDiff/10, yMax+yDiff/10 )        
+# Changing the direction of the axis        
+        # ax.set_zlim(yMin-yDiff/10, yMax+yDiff/10 )
+        ax.set_zlim(yMax+yDiff/10, yMin-yDiff/10 )             
 
         for i in range(np.size(tMatrix,1)):
             
@@ -87,7 +89,9 @@ class plotFunctions:
         
         ax.set_xlim(pMin-pDiff/10, pMax+pDiff/10 )
         ax.set_ylim(pMin-pDiff/10, pMax+pDiff/10 )
-        ax.set_zlim(pMin-pDiff/10, pMax+pDiff/10 )    
+# Changing the direction of the axis        
+        # ax.set_zlim(pMin-pDiff/10, pMax+pDiff/10 ) 
+        ax.set_zlim(pMax+pDiff/10, pMin-pDiff/10 )  
         
         
         for i in range(np.size(tMatrix,1)):
