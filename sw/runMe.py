@@ -166,10 +166,10 @@ for i in range(N_IMAGES-1) :
     dst_pts = dst_ptsList[i]
     mask = maskList[i]
     
-#   Not using decomposeEssentialMat() since it gives 2 results for rotation     
+#   Not using decomposeEssentialMat() since it gives 2 results for rotation and translation   
     # R1, R2, t = cv.decomposeEssentialMat(E)
 
-#   Using recoverPose() since it also makes control for 2 rotation matrices 
+#   Using recoverPose() since it also controls for rotation matrices and translation matrices with Cheirality Condition 
     correctCheckCount, R, t, _ = cv.recoverPose(E, src_pts, dst_pts, cameraMatrix, mask)
     
     Rlist.append(R)
